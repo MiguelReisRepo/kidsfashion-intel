@@ -22,6 +22,20 @@ export function fmtEur(n: number | null | undefined): string {
   return n == null ? '—' : `€${n.toFixed(2)}`;
 }
 
+export function timeAgo(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const ms = Date.now() - new Date(iso).getTime();
+  const min = Math.round(ms / 60000);
+  if (min < 1) return 'agora';
+  if (min < 60) return `há ${min} min`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return `há ${hr}h`;
+  const d = Math.round(hr / 24);
+  if (d < 30) return `há ${d}d`;
+  const mo = Math.round(d / 30);
+  return `há ${mo} mês${mo === 1 ? '' : 'es'}`;
+}
+
 export function recColor(rec: string | null): string {
   switch (rec) {
     case 'STOCK': return 'bg-emerald-500 text-emerald-50';

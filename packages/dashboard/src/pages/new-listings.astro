@@ -1,0 +1,81 @@
+---
+import Base from '../layouts/Base.astro';
+import { supabase, fmtEur, timeAgo } from '../lib/supabase.ts';
+
+const sb = supabase();
+
+// New listings = rows whose first_seen_at landed in the last 7 days. The DB
+// default on the column auto-stamps this; the persist UPSERT preserves it on
+// re-discovery, so this view shows genuine first-sightings only.
+const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+const [{ data: listings, error: lErr }, { data: sources, error: sErr }] = await Promise.all([
+  sb
+    .from('listings_normalized')
+    .select('id, source_id, external_id, url, sku_id, team_slug, season, kit_type, gender_age, size, condition, price_eur, currency, country, brand, photos, title_raw, first_seen_at')
+    .gte('first_seen_at', since)
+    .order('first_seen_at', { ascending: false })
+    .limit(200),
+  sb.from('sources').select('id, name'),
+]);
+if (lErr) throw new Error(lErr.message);
+if (sErr) throw new Error(sErr.message);
+
+const sourceName = new Map<number, string>((sources ?? []).map((s: any) => [s.id, s.name]));
+const rows = listings ?? [];
+
+// Group counts per source for the header.
+const bySource: Record<string, number> = {};
+for (const r of rows) {
+  const n = sourceName.get(r.source_id) ?? 'unknown';
+  bySource[n] = (bySource[n] ?? 0) + 1;
+}
+---
+<Base title="Novas listagens">
+  <h1>Novas listagens · últimos 7 dias</h1>
+  <p class="muted">
+    {rows.length} listagens vistas pela primeira vez desde {new Date(since).toLocaleDateString('pt-PT')}.
+    {Object.entries(bySource).map(([k, v]) => ` ${k}: ${v}`).join(' · ')}
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Foto</th>
+        <th>Listing</th>
+        <th>Source</th>
+        <th>Match</th>
+        <th>Tamanho</th>
+        <th>Preço</th>
+        <th>Visto</th>
+      </tr>
+    </thead>
+    <tbody>
+      {rows.map((r: any) => {
+        const photo = Array.isArray(r.photos) && r.photos.length > 0 ? r.photos[0] : null;
+        const src = sourceName.get(r.source_id) ?? '?';
+        const match = r.team_slug ? `${r.team_slug} ${r.season ?? ''} · ${r.kit_type ?? '?'}/${r.gender_age ?? '?'}` : 'unmatched';
+        return (
+          <tr>
+            <td style="width:64px">
+              {photo ? (
+                <img src={photo} alt="" loading="lazy" referrerpolicy="no-referrer" style="width:48px;height:60px;object-fit:cover;border-radius:6px;background:#1f1f23" />
+              ) : (
+                <div style="width:48px;height:60px;background:#1f1f23;border-radius:6px" />
+              )}
+            </td>
+            <td>
+              <a href={r.url} target="_blank" rel="noopener">{(r.title_raw ?? '').slice(0, 70)}</a>
+              {r.brand && <span class="muted"> · {r.brand}</span>}
+              {r.country && <span class="muted"> · {r.country}</span>}
+            </td>
+            <td><span class="pill rec-HOLD">{src}</span></td>
+            <td>{match}</td>
+            <td>{r.size ?? '—'}</td>
+            <td>{fmtEur(r.price_eur)}{r.currency && r.currency !== 'EUR' ? <span class="muted"> {r.currency}</span> : null}</td>
+            <td class="muted">{timeAgo(r.first_seen_at)}</td>
+          </tr>
+        );
+      })}
+    </tbody>
+  </table>
+</Base>
