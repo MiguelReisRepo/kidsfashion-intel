@@ -124,9 +124,14 @@ const adapters: Record<string, SourceAdapter> = {
     },
   },
   vinted: {
-    // Vinted PT kids catalog: parent 1193 ("Bebés e Crianças"). Sub-catalogs cover
-    // age bands (1198 5-8y, 1199 9-11y, 1200 12-14y) — we keep the parent broad
-    // and let our title-based gender_age detector classify.
+    // Validated live against vinted.pt (May 2026):
+    //   1204 = Vestuário desportivo Meninos — 960 hits for "Portugal", almost
+    //          all relevant Portugal kits (Forca Portugal, Nike, Puma, Ronaldo).
+    //   1253 = Vestuário desportivo Meninas — 606 hits, mix of jerseys and
+    //          generic kids sportswear.
+    //   1193 = parent (kids) — same volume but ruidoso (peluches, sapatos, polos).
+    // Adult queries fall through with no catalog filter (Vinted PT volume on
+    // adult football jerseys is low compared to OLX, so we let it widen).
     buildQuery: (q) => q,
     async searchOne(query, nowIso) {
       const params: {
@@ -135,7 +140,7 @@ const adapters: Record<string, SourceAdapter> = {
         order: 'newest_first';
         catalogIds?: number[];
       } = { searchText: query.q, perPage: 96, order: 'newest_first' };
-      if (query.genderAge === 'kids') params.catalogIds = [1193];
+      if (query.genderAge === 'kids') params.catalogIds = [1204, 1253];
       const res = await searchVinted(params);
       const items = res.items;
       const raws = items.map((it) => ({ external_id: String(it.id), payload: it }));

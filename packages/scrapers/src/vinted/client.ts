@@ -6,15 +6,20 @@ import { VintedSearchResponse } from './types.js';
  * relies on (pyvinted, vinted-rs, etc.) is session-cookie reuse:
  *
  *   1. GET https://www.vinted.pt/  with a browser-like User-Agent
- *      → Set-Cookie includes _vinted_fr_session (and on a clean residential
- *        IP, no Datadome challenge is served — the cookie is granted).
- *   2. Subsequent calls to /api/v2/catalog/items with that cookie return
- *      JSON for ~30 minutes.
+ *      → Set-Cookie includes anon_id + access_token_web (JWT) + refresh_token_web.
+ *        On a clean residential IP, no Datadome challenge is served.
+ *      Note: Vinted retired the legacy `_vinted_fr_session` cookie in 2024.
+ *   2. Subsequent calls to /api/v2/catalog/items with the full Cookie header
+ *      return JSON for ~30 minutes.
  *   3. On 401/403 we discard the session and refresh.
  *
  * This works only from a non-datacenter IP. GitHub-hosted runners will get
  * a Datadome challenge on step 1; the workflow uses [self-hosted] to run
  * from the operator's residential IP instead.
+ *
+ * Empirically validated (May 2026) against vinted.pt — catalog 1204 (vestuário
+ * desportivo meninos) returns ~960 hits for "Portugal", catalog 1253 (vestuário
+ * desportivo meninas) ~606 hits. See scripts/spike-search-portugal-kids.mjs.
  */
 
 const BASE = 'https://www.vinted.pt';
@@ -42,14 +47,22 @@ function extractCookies(setCookieHeader: string | null, multipleHeaders: string[
   // Node's `Headers.get('set-cookie')` returns a single comma-joined string which
   // is wrong for cookies (they legitimately contain commas in Expires=). We use
   // `Headers.getSetCookie()` when available, falling back to the joined string.
+  // Vinted's homepage sometimes sets an empty value before the real one in the
+  // same response (e.g. `access_token_web=; Max-Age=-1` then `access_token_web=eyJ…`).
+  // We must NOT carry over the empty unsets, so we map by name and keep only
+  // non-empty values.
   const raw = multipleHeaders.length > 0 ? multipleHeaders : setCookieHeader ? [setCookieHeader] : [];
-  const pairs: string[] = [];
+  const byName = new Map<string, string>();
   for (const c of raw) {
     const semi = c.indexOf(';');
     const pair = semi === -1 ? c : c.slice(0, semi);
-    if (pair.includes('=')) pairs.push(pair.trim());
+    const eq = pair.indexOf('=');
+    if (eq <= 0) continue;
+    const name = pair.slice(0, eq).trim();
+    const value = pair.slice(eq + 1).trim();
+    if (value) byName.set(name, value);
   }
-  return pairs.join('; ');
+  return [...byName.entries()].map(([k, v]) => `${k}=${v}`).join('; ');
 }
 
 async function refresh(): Promise<Session> {
@@ -75,13 +88,16 @@ async function refresh(): Promise<Session> {
       ? (res.headers as Headers & { getSetCookie: () => string[] }).getSetCookie()
       : [];
     const cookie = extractCookies(res.headers.get('set-cookie'), setCookies);
-    if (!cookie || !cookie.includes('_vinted_fr_session')) {
-      // Without the session cookie nothing downstream will work — fail hard.
-      throw new Error('vinted homepage did not return _vinted_fr_session');
+    if (!cookie || !cookie.includes('access_token_web=')) {
+      // Without the JWT cookie nothing downstream will work — fail hard.
+      throw new Error('vinted homepage did not return access_token_web (IP may be flagged)');
     }
 
     const html = await res.text();
-    if (html.includes('captcha-delivery.com') || html.includes('datadome')) {
+    // A real Datadome challenge page is <50KB and titled "captcha-delivery". The
+    // normal Vinted homepage is ~2MB and references the datadome JS by URL, which
+    // would false-positive a naive string match. Use size + path to discriminate.
+    if (html.length < 100_000 && /captcha-delivery\.com/.test(html)) {
       throw new Error('vinted homepage served Datadome challenge — IP is flagged');
     }
     const csrfToken = extractCsrfToken(html);
