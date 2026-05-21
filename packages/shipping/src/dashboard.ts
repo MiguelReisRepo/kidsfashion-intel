@@ -61,9 +61,10 @@ function renderKitTable(kit: Kit, destinations: Country[], rates: ShippingRate[]
   const allCarriers: Carrier[] = ['CTT', 'CTT', 'InPost', 'Chronopost', 'DHL', 'DPD'];
   // Distinct carrier+service columns we want to render in fixed order
   const cols: Array<{ carrier: Carrier; service: ShippingRate['service']; label: string }> = [
-    { carrier: 'CTT', service: 'economy', label: 'CTT Económico' },
-    { carrier: 'CTT', service: 'standard', label: 'CTT Prioritário' },
-    { carrier: 'InPost', service: 'economy', label: 'InPost Locker' },
+    { carrier: 'CTT', service: 'economy', label: 'CTT Normal' },
+    { carrier: 'CTT', service: 'registered', label: 'CTT Registado' },
+    { carrier: 'CTT', service: 'standard', label: 'CTT Azul' },
+    { carrier: 'InPost', service: 'economy', label: 'InPost PickPoint' },
     { carrier: 'DPD', service: 'standard', label: 'DPD Classic' },
     { carrier: 'Chronopost', service: 'express', label: 'Chronopost Express' },
     { carrier: 'DHL', service: 'express', label: 'DHL Express' },
