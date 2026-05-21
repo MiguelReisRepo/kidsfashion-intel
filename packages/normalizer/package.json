@@ -1,0 +1,17 @@
+{
+  "name": "@kfi/normalizer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "catalog-sync": "tsc -b && node dist/catalog-sync.js"
+  },
+  "dependencies": {
+    "@kfi/shared": "*",
+    "esbuild": "^0.24.2",
+    "zod": "^3.24.1"
+  }
+}

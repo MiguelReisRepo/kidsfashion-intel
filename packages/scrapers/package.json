@@ -1,0 +1,19 @@
+{
+  "name": "@kfi/scrapers",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "scrape": "tsc -b && node dist/runner.js"
+  },
+  "dependencies": {
+    "@kfi/shared": "*",
+    "@kfi/db": "*",
+    "@kfi/normalizer": "*",
+    "got": "^14.4.5",
+    "zod": "^3.24.1"
+  }
+}

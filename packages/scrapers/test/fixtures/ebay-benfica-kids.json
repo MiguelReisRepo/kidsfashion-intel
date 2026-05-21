@@ -1,0 +1,47 @@
+{
+  "itemSummaries": [
+    {
+      "itemId": "v1|123456789012|0",
+      "title": "Benfica 2024/25 Home Kids Jersey Size 10 NEW WITH TAGS",
+      "price": { "value": "44.95", "currency": "EUR" },
+      "itemWebUrl": "https://www.ebay.com/itm/123456789012",
+      "itemLocation": { "country": "PT", "city": "Lisboa" },
+      "seller": { "username": "lisbon_kits", "feedbackScore": 1543, "feedbackPercentage": "99.6" },
+      "condition": "New with tags",
+      "image": { "imageUrl": "https://i.ebayimg.com/images/g/abc/s-l500.jpg" },
+      "thumbnailImages": [
+        { "imageUrl": "https://i.ebayimg.com/thumbs/abc.jpg" }
+      ],
+      "shippingOptions": [
+        { "shippingCost": { "value": "5.50", "currency": "EUR" }, "shippingCostType": "FIXED" }
+      ],
+      "itemCreationDate": "2026-05-15T10:00:00.000Z",
+      "buyingOptions": ["FIXED_PRICE"]
+    },
+    {
+      "itemId": "v1|987654321098|0",
+      "title": "Camisola Sporting CP Away 2024-2025 Adulto M Excelente Estado",
+      "price": { "value": "29.99", "currency": "EUR" },
+      "itemWebUrl": "https://www.ebay.com/itm/987654321098",
+      "itemLocation": { "country": "ES", "city": "Madrid" },
+      "seller": { "username": "iberia_jerseys", "feedbackScore": 220, "feedbackPercentage": "100.0" },
+      "condition": "Pre-owned",
+      "image": { "imageUrl": "https://i.ebayimg.com/images/g/xyz/s-l500.jpg" },
+      "shippingOptions": [
+        { "shippingCost": { "value": "8.00", "currency": "EUR" } }
+      ],
+      "itemCreationDate": "2026-05-10T18:30:00.000Z"
+    },
+    {
+      "itemId": "v1|555555555555|0",
+      "title": "FC Barcelona Lamine Yamal Retro Vintage 2008 USD listing",
+      "price": { "value": "59.00", "currency": "USD" },
+      "itemWebUrl": "https://www.ebay.com/itm/555555555555",
+      "itemLocation": { "country": "US" },
+      "condition": "Used"
+    }
+  ],
+  "total": 3,
+  "limit": 50,
+  "offset": 0
+}

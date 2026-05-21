@@ -1,0 +1,70 @@
+name: fetch-ebay
+
+on:
+  schedule:
+    # Hourly with jitter (offset 17 minutes past the hour to avoid clustering)
+    - cron: '17 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Skip persistence layer, just log queries'
+        type: boolean
+        default: false
+      limit:
+        description: 'Cap number of queries this run'
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fetch-ebay
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Sync catalog
+        env:
+          KIDSFASHION_SEED_URL: ${{ vars.KIDSFASHION_SEED_URL }}
+        run: npm run catalog-sync -w @kfi/normalizer
+
+      - name: Run eBay scrape
+        env:
+          NODE_ENV: production
+          LOG_LEVEL: info
+          EBAY_CLIENT_ID: ${{ secrets.EBAY_CLIENT_ID }}
+          EBAY_CLIENT_SECRET: ${{ secrets.EBAY_CLIENT_SECRET }}
+          EBAY_MARKETPLACE_ID: ${{ vars.EBAY_MARKETPLACE_ID || 'EBAY_GB' }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
+        run: |
+          npm run scrape -w @kfi/scrapers -- \
+            --source ebay \
+            ${{ inputs.dry_run && '--dry' || '' }} \
+            ${{ inputs.limit && format('--limit {0}', inputs.limit) || '' }}
+
+      - name: Upload run artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scrape-output-${{ github.run_id }}
+          path: |
+            data/listings-raw-ebay-*.json
+            data/listings-normalized-ebay-*.json
+            data/scrape-run-ebay-*.json
+          retention-days: 7
+          if-no-files-found: ignore
