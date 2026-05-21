@@ -28,13 +28,7 @@ export const Carrier = z.enum([
 ]);
 export type Carrier = z.infer<typeof Carrier>;
 
-export const Service = z.enum([
-  'economy',
-  'standard',
-  'registered',
-  'registered_bulk', // CTT Pré-Pagos: requires postal contract or bulk franquia
-  'express',
-]);
+export const Service = z.enum(['economy', 'standard', 'registered', 'express']);
 export type Service = z.infer<typeof Service>;
 
 /**

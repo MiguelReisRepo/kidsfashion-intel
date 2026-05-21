@@ -31,10 +31,6 @@ export const DEFAULT_RATES: ShippingRate[] = [
   { carrier: 'CTT', service: 'registered', origin: 'PT', destination: 'PT', weight_max_kg: 0.1, price_eur: 4.60, delivery_days_min: 2, delivery_days_max: 4, confidence: 'verified', notes: 'Correio Registado pacote postal — com tracking e assinatura' },
   { carrier: 'CTT', service: 'registered', origin: 'PT', destination: 'PT', weight_max_kg: 0.5, price_eur: 5.40, delivery_days_min: 2, delivery_days_max: 4, confidence: 'verified', notes: 'Correio Registado pacote postal 100g-500g — preço balcão' },
   { carrier: 'CTT', service: 'registered', origin: 'PT', destination: 'PT', weight_max_kg: 2, price_eur: 8.93, delivery_days_min: 2, delivery_days_max: 4, confidence: 'verified', notes: 'Correio Registado pacote postal 500g-2kg — preço balcão' },
-  // CTT Correio Registado Pré-Pagos — mesmo serviço, requer contrato/máquina franquiar ou pré-pagamento volume
-  { carrier: 'CTT', service: 'registered_bulk', origin: 'PT', destination: 'PT', weight_max_kg: 0.1, price_eur: 3.45, delivery_days_min: 2, delivery_days_max: 4, confidence: 'verified', notes: 'CTT Registado Pré-Pagos — requer contrato CTT (compensa a partir de ~30 envios/mês)' },
-  { carrier: 'CTT', service: 'registered_bulk', origin: 'PT', destination: 'PT', weight_max_kg: 0.5, price_eur: 4.00, delivery_days_min: 2, delivery_days_max: 4, confidence: 'verified', notes: 'CTT Registado Pré-Pagos 100g-500g (poupa 1,40€ vs balcão)' },
-  { carrier: 'CTT', service: 'registered_bulk', origin: 'PT', destination: 'PT', weight_max_kg: 2, price_eur: 6.37, delivery_days_min: 2, delivery_days_max: 4, confidence: 'verified', notes: 'CTT Registado Pré-Pagos 500g-2kg (poupa 2,56€ vs balcão)' },
   // InPost Locker-to-Locker (PickPoint / Point Relais PCL) — verificado calculator inpost.pt
   { carrier: 'InPost', service: 'economy', origin: 'PT', destination: 'PT', weight_max_kg: 0.5, price_eur: 4.76, delivery_days_min: 2, delivery_days_max: 4, confidence: 'verified', notes: 'PickPoint Locker-to-Locker' },
   { carrier: 'InPost', service: 'economy', origin: 'PT', destination: 'PT', weight_max_kg: 1, price_eur: 5.42, delivery_days_min: 2, delivery_days_max: 4, confidence: 'verified', notes: 'PickPoint Locker-to-Locker' },
@@ -43,26 +39,9 @@ export const DEFAULT_RATES: ShippingRate[] = [
   { carrier: 'Chronopost', service: 'express', origin: 'PT', destination: 'PT', weight_max_kg: 1, price_eur: 8.50, delivery_days_min: 1, delivery_days_max: 1, confidence: 'approximate', notes: 'Chrono 13 doméstico — entrega manhã seguinte' },
 
   // ============================================================
-  // CTT — Internacional Económico (lento, ~5-10 dias)
-  // Public CTT 2024 zone-based pricing for parcels under 1kg
-  // ============================================================
-  { carrier: 'CTT', service: 'economy', origin: 'PT', destination: 'ES', weight_max_kg: 0.5, price_eur: 8.65, delivery_days_min: 4, delivery_days_max: 7, confidence: 'approximate' },
-  { carrier: 'CTT', service: 'economy', origin: 'PT', destination: 'ES', weight_max_kg: 1, price_eur: 10.90, delivery_days_min: 4, delivery_days_max: 7, confidence: 'approximate' },
-  { carrier: 'CTT', service: 'economy', origin: 'PT', destination: 'FR', weight_max_kg: 0.5, price_eur: 10.50, delivery_days_min: 5, delivery_days_max: 8, confidence: 'approximate' },
-  { carrier: 'CTT', service: 'economy', origin: 'PT', destination: 'FR', weight_max_kg: 1, price_eur: 13.80, delivery_days_min: 5, delivery_days_max: 8, confidence: 'approximate' },
-  { carrier: 'CTT', service: 'economy', origin: 'PT', destination: 'DE', weight_max_kg: 0.5, price_eur: 11.20, delivery_days_min: 5, delivery_days_max: 8, confidence: 'approximate' },
-  { carrier: 'CTT', service: 'economy', origin: 'PT', destination: 'DE', weight_max_kg: 1, price_eur: 14.50, delivery_days_min: 5, delivery_days_max: 8, confidence: 'approximate' },
-  { carrier: 'CTT', service: 'economy', origin: 'PT', destination: 'IT', weight_max_kg: 0.5, price_eur: 11.80, delivery_days_min: 6, delivery_days_max: 9, confidence: 'approximate' },
-  { carrier: 'CTT', service: 'economy', origin: 'PT', destination: 'IT', weight_max_kg: 1, price_eur: 15.20, delivery_days_min: 6, delivery_days_max: 9, confidence: 'approximate' },
-  { carrier: 'CTT', service: 'economy', origin: 'PT', destination: 'NL', weight_max_kg: 0.5, price_eur: 11.50, delivery_days_min: 5, delivery_days_max: 8, confidence: 'approximate' },
-  { carrier: 'CTT', service: 'economy', origin: 'PT', destination: 'NL', weight_max_kg: 1, price_eur: 14.90, delivery_days_min: 5, delivery_days_max: 8, confidence: 'approximate' },
-  { carrier: 'CTT', service: 'economy', origin: 'PT', destination: 'BE', weight_max_kg: 0.5, price_eur: 11.50, delivery_days_min: 5, delivery_days_max: 8, confidence: 'approximate' },
-  { carrier: 'CTT', service: 'economy', origin: 'PT', destination: 'BE', weight_max_kg: 1, price_eur: 14.90, delivery_days_min: 5, delivery_days_max: 8, confidence: 'approximate' },
-  { carrier: 'CTT', service: 'economy', origin: 'PT', destination: 'GB', weight_max_kg: 0.5, price_eur: 13.50, delivery_days_min: 6, delivery_days_max: 10, confidence: 'approximate', notes: 'Brexit: pode haver taxas de desalfandegamento ao destinatário' },
-  { carrier: 'CTT', service: 'economy', origin: 'PT', destination: 'GB', weight_max_kg: 1, price_eur: 17.20, delivery_days_min: 6, delivery_days_max: 10, confidence: 'approximate' },
-
-  // ============================================================
-  // CTT — Internacional Prioritário (3-6 dias)
+  // CTT — Internacional Prioritário (Correio Azul, 3-6 dias)
+  // Nota: Correio Económico Internacional foi removido — demasiado lento
+  // (5-10 dias) para listings competitivos em eBay/Vinted etc.
   // ============================================================
   { carrier: 'CTT', service: 'standard', origin: 'PT', destination: 'ES', weight_max_kg: 0.5, price_eur: 12.50, delivery_days_min: 3, delivery_days_max: 5, confidence: 'approximate' },
   { carrier: 'CTT', service: 'standard', origin: 'PT', destination: 'ES', weight_max_kg: 1, price_eur: 15.80, delivery_days_min: 3, delivery_days_max: 5, confidence: 'approximate' },
