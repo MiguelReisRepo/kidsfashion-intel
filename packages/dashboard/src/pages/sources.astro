@@ -3,28 +3,37 @@ import Base from '../layouts/Base.astro';
 import { supabase } from '../lib/supabase.ts';
 
 const sb = supabase();
-const [{ data: sources, error: sErr }, { data: runs, error: rErr }] = await Promise.all([
-  sb.from('sources').select('id, name, type, country, enabled, rate_per_hour, last_block_at, blocked_until, consecutive_errors').order('name'),
-  sb.from('scrape_runs').select('source_id, status, started_at, requests_made, listings_found, errors').order('started_at', { ascending: false }).limit(200),
-]);
-if (sErr) throw new Error(sErr.message);
-if (rErr) throw new Error(rErr.message);
-
-// Aggregate per source.
+let sources: any[] = [];
 const bySource = new Map<number, { runs: number; ok: number; partial: number; error: number; lastStarted: string | null; listings: number }>();
-for (const r of runs ?? []) {
-  const stat = bySource.get(r.source_id) ?? { runs: 0, ok: 0, partial: 0, error: 0, lastStarted: null, listings: 0 };
-  stat.runs++;
-  if (r.status === 'ok') stat.ok++;
-  else if (r.status === 'partial') stat.partial++;
-  else stat.error++;
-  stat.listings += r.listings_found ?? 0;
-  if (!stat.lastStarted || r.started_at > stat.lastStarted) stat.lastStarted = r.started_at;
-  bySource.set(r.source_id, stat);
+
+if (sb) {
+  const [{ data: srcData, error: sErr }, { data: runs, error: rErr }] = await Promise.all([
+    sb.from('sources').select('id, name, type, country, enabled, rate_per_hour, last_block_at, blocked_until, consecutive_errors').order('name'),
+    sb.from('scrape_runs').select('source_id, status, started_at, requests_made, listings_found, errors').order('started_at', { ascending: false }).limit(200),
+  ]);
+  if (sErr) throw new Error(sErr.message);
+  if (rErr) throw new Error(rErr.message);
+  sources = srcData ?? [];
+
+  for (const r of runs ?? []) {
+    const stat = bySource.get(r.source_id) ?? { runs: 0, ok: 0, partial: 0, error: 0, lastStarted: null, listings: 0 };
+    stat.runs++;
+    if (r.status === 'ok') stat.ok++;
+    else if (r.status === 'partial') stat.partial++;
+    else stat.error++;
+    stat.listings += r.listings_found ?? 0;
+    if (!stat.lastStarted || r.started_at > stat.lastStarted) stat.lastStarted = r.started_at;
+    bySource.set(r.source_id, stat);
+  }
 }
 ---
 <Base title="Sources">
   <h1>Sources</h1>
+  {!sb && (
+    <div style="background:#1f1f23;border:1px solid #44403c;border-radius:8px;padding:16px;margin-bottom:24px">
+      <strong>Supabase não configurado.</strong> Define <code>SUPABASE_URL</code> e <code>SUPABASE_SERVICE_ROLE_KEY</code> no <code>.env.local</code> para ver dados reais.
+    </div>
+  )}
   <p class="muted">Saúde das fontes nas últimas 200 corridas.</p>
 
   <table>
@@ -42,7 +51,7 @@ for (const r of runs ?? []) {
       </tr>
     </thead>
     <tbody>
-      {(sources ?? []).map((s: any) => {
+      {sources.map((s: any) => {
         const stat = bySource.get(s.id) ?? { runs: 0, ok: 0, partial: 0, error: 0, lastStarted: null, listings: 0 };
         return (
           <tr>

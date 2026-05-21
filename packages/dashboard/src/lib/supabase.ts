@@ -2,18 +2,23 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 let cached: SupabaseClient | null = null;
 
+export function isSupabaseConfigured(): boolean {
+  return !!(import.meta.env.SUPABASE_URL && import.meta.env.SUPABASE_SERVICE_ROLE_KEY);
+}
+
 /**
  * Server-side Supabase client. Uses the service role key so reads aren't gated
- * by RLS. Never imported by a `client:*` directive — pages are SSG and queries
- * run at build time.
+ * by RLS. Returns null when the env isn't configured so pages can render a
+ * "not configured" placeholder instead of failing the entire build.
+ *
+ * Never imported by a `client:*` directive — pages are SSG and queries run at
+ * build time.
  */
-export function supabase(): SupabaseClient {
+export function supabase(): SupabaseClient | null {
   if (cached) return cached;
   const url = import.meta.env.SUPABASE_URL;
   const key = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY required for dashboard build');
-  }
+  if (!url || !key) return null;
   cached = createClient(url, key, { auth: { persistSession: false } });
   return cached;
 }

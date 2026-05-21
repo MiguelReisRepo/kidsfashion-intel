@@ -3,25 +3,38 @@ import Base from '../layouts/Base.astro';
 import { supabase } from '../lib/supabase.ts';
 
 const sb = supabase();
-const [{ data: top, error: topErr }, { data: runs, error: runsErr }] = await Promise.all([
-  sb.from('top_demand_30d').select('recommendation').limit(500),
-  sb.from('scrape_runs').select('source_id, status, started_at, listings_found, errors').order('started_at', { ascending: false }).limit(50),
-]);
-if (topErr) throw new Error(topErr.message);
-if (runsErr) throw new Error(runsErr.message);
 
-const counts: Record<string, number> = { STOCK: 0, RAISE: 0, HOLD: 0, SKIP: 0, LIQUIDATE: 0 };
-for (const r of top ?? []) {
-  const k = r.recommendation ?? 'HOLD';
-  counts[k] = (counts[k] ?? 0) + 1;
+let counts: Record<string, number> = { STOCK: 0, RAISE: 0, HOLD: 0, SKIP: 0, LIQUIDATE: 0 };
+let runs: any[] = [];
+let okRuns = 0;
+let totalRuns = 0;
+let lastRun: any = null;
+
+if (sb) {
+  const [{ data: top, error: topErr }, { data: runsData, error: runsErr }] = await Promise.all([
+    sb.from('top_demand_30d').select('recommendation').limit(500),
+    sb.from('scrape_runs').select('source_id, status, started_at, listings_found, errors').order('started_at', { ascending: false }).limit(50),
+  ]);
+  if (topErr) throw new Error(topErr.message);
+  if (runsErr) throw new Error(runsErr.message);
+
+  for (const r of top ?? []) {
+    const k = r.recommendation ?? 'HOLD';
+    counts[k] = (counts[k] ?? 0) + 1;
+  }
+  runs = runsData ?? [];
+  okRuns = runs.filter((r) => r.status === 'ok').length;
+  totalRuns = runs.length;
+  lastRun = runs[0];
 }
-
-const okRuns = (runs ?? []).filter((r) => r.status === 'ok').length;
-const totalRuns = runs?.length ?? 0;
-const lastRun = (runs ?? [])[0];
 ---
 <Base title="Overview">
   <h1>Overview</h1>
+  {!sb && (
+    <div style="background:#1f1f23;border:1px solid #44403c;border-radius:8px;padding:16px;margin-bottom:24px">
+      <strong>Supabase não configurado.</strong> Define <code>SUPABASE_URL</code> e <code>SUPABASE_SERVICE_ROLE_KEY</code> no <code>.env.local</code> para ver dados reais.
+    </div>
+  )}
   <p class="muted">Snapshot da última corrida de <code>metrics_daily</code>.</p>
 
   <div class="cards">
