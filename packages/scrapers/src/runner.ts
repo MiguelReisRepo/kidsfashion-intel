@@ -96,7 +96,18 @@ const adapters: Record<string, SourceAdapter> = {
   'olx-pt': {
     buildQuery: (q) => q,
     async searchOne(query, nowIso) {
-      const res = await searchOlx({ query: query.q, limit: 40 });
+      // Empirically (spike-search-portugal-kids.mjs):
+      //   cat 292  = /bebes-criancas/roupinhas/  (kids clothing, ~all kids items)
+      //   cat 5430 = Camisolas e Equipamentos (broader sports apparel, adult-heavy)
+      // Scoping the request by gender_age cuts noise and saves quota on the
+      // shared 60 req/h budget for this source.
+      const categoryId =
+        query.genderAge === 'kids' ? 292
+        : query.genderAge === 'adult' ? 5430
+        : undefined;
+      const params = { query: query.q, limit: 40 } as { query: string; limit: number; categoryId?: number };
+      if (categoryId !== undefined) params.categoryId = categoryId;
+      const res = await searchOlx(params);
       const offers = res.data;
       const raws = offers.map((o) => ({
         external_id: String(o.id),
