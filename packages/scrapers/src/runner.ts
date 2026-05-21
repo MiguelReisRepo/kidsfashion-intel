@@ -14,6 +14,8 @@ import { searchOlx } from './olx-pt/client.js';
 import { normalizeOlxOffer } from './olx-pt/normalize.js';
 import { searchMercadoLivre } from './mercadolivre/client.js';
 import { normalizeMlItem } from './mercadolivre/normalize.js';
+import { searchVinted } from './vinted/client.js';
+import { normalizeVintedItem } from './vinted/normalize.js';
 import { buildCatalogQueries, type CatalogQuery } from './lib/queries.js';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -117,6 +119,28 @@ const adapters: Record<string, SourceAdapter> = {
       }));
       const listings = await Promise.all(
         offers.map((o) => normalizeOlxOffer(o, nowIso, query.expectedTeamSlug)),
+      );
+      return { raws, listings };
+    },
+  },
+  vinted: {
+    // Vinted PT kids catalog: parent 1193 ("Bebés e Crianças"). Sub-catalogs cover
+    // age bands (1198 5-8y, 1199 9-11y, 1200 12-14y) — we keep the parent broad
+    // and let our title-based gender_age detector classify.
+    buildQuery: (q) => q,
+    async searchOne(query, nowIso) {
+      const params: {
+        searchText: string;
+        perPage: number;
+        order: 'newest_first';
+        catalogIds?: number[];
+      } = { searchText: query.q, perPage: 96, order: 'newest_first' };
+      if (query.genderAge === 'kids') params.catalogIds = [1193];
+      const res = await searchVinted(params);
+      const items = res.items;
+      const raws = items.map((it) => ({ external_id: String(it.id), payload: it }));
+      const listings = await Promise.all(
+        items.map((it) => normalizeVintedItem(it, nowIso, query.expectedTeamSlug)),
       );
       return { raws, listings };
     },

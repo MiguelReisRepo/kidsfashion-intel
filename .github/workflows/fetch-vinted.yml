@@ -1,0 +1,73 @@
+name: fetch-vinted
+
+# Runs on a SELF-HOSTED runner only. Vinted is behind Datadome and any
+# GitHub-hosted runner IP (Azure datacenter) gets a challenge immediately.
+# See VINTED_SELFHOSTED.md for the runner setup.
+
+on:
+  schedule:
+    # Every 4 hours offset :11. Conservative cadence to avoid IP scoring damage.
+    - cron: '11 */4 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Skip persistence layer, just log queries'
+        type: boolean
+        default: false
+      limit:
+        description: 'Cap number of queries this run'
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fetch-vinted
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    # Operator must register a runner with the labels [self-hosted, vinted].
+    runs-on: [self-hosted, vinted]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Sync catalog
+        env:
+          KIDSFASHION_SEED_URL: ${{ vars.KIDSFASHION_SEED_URL }}
+        run: npm run catalog-sync -w @kfi/normalizer
+
+      - name: Run Vinted scrape
+        env:
+          NODE_ENV: production
+          LOG_LEVEL: info
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
+        run: |
+          npm run scrape -w @kfi/scrapers -- \
+            --source vinted \
+            --delay-ms 4000 \
+            ${{ inputs.dry_run && '--dry' || '' }} \
+            ${{ inputs.limit && format('--limit {0}', inputs.limit) || '' }}
+
+      - name: Upload run artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scrape-output-vinted-${{ github.run_id }}
+          path: |
+            data/listings-raw-vinted-*.json
+            data/listings-normalized-vinted-*.json
+            data/scrape-run-vinted-*.json
+          retention-days: 7
+          if-no-files-found: ignore

@@ -16,13 +16,14 @@ Companion service to the storefront; runs as a separate repo because the storefr
 | eBay Browse API | API | implemented + cron | hourly at :17 |
 | OLX-PT | scrape (free fetch) | implemented + cron | every 4h at :43, kids → cat 292 |
 | Mercado Livre | API | implemented + cron | every 6h at :29, MLB site, OAuth required |
+| Vinted | scrape (session-cookie reuse) | implemented + cron | every 4h at :11, **self-hosted runner only** (see [VINTED_SELFHOSTED.md](./VINTED_SELFHOSTED.md)) |
 | AliExpress | API | planned | open platform key not yet provisioned |
 | Amazon PA-API | API | planned | low volume of jerseys, deprioritized |
 | Catawiki | scrape | planned | minor volume, audited-listings only |
 | Custojusto | scrape | deferred | Cloudflare bot wall returns 403 — needs paid residential proxy |
 | Depop | scrape | deferred | requires browser automation |
 | Grailed | scrape | deferred | resale-niche, low signal-to-effort |
-| Vinted, Wallapop, Leboncoin, Subito | scrape | deferred | Datadome-protected (paid proxies required) |
+| Wallapop, Leboncoin, Subito | scrape | deferred | Datadome-protected (paid proxies required) |
 
 See [PRODUCTION.md](./PRODUCTION.md) for bring-up.
 
