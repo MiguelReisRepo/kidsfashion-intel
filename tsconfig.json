@@ -5,6 +5,7 @@
     { "path": "./packages/normalizer" },
     { "path": "./packages/db" },
     { "path": "./packages/scrapers" },
-    { "path": "./packages/shipping" }
+    { "path": "./packages/shipping" },
+    { "path": "./packages/metrics" }
   ]
 }

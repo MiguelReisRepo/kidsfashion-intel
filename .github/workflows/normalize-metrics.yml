@@ -1,0 +1,48 @@
+name: normalize-metrics
+
+on:
+  schedule:
+    # Daily at 03:47 UTC, well after both scrapers should have settled.
+    - cron: '47 3 * * *'
+  workflow_dispatch:
+    inputs:
+      day:
+        description: 'Override target day (YYYY-MM-DD, defaults to UTC today)'
+        required: false
+      stale_hours:
+        description: 'Hours after which an unseen listing is inferred sold'
+        required: false
+        default: '48'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: normalize-metrics
+  cancel-in-progress: false
+
+jobs:
+  rollup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Run metrics rollup
+        env:
+          NODE_ENV: production
+          LOG_LEVEL: info
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          npm run rollup -w @kfi/metrics -- \
+            ${{ inputs.day && format('--day {0}', inputs.day) || '' }} \
+            ${{ inputs.stale_hours && format('--stale-hours {0}', inputs.stale_hours) || '' }}

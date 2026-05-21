@@ -1,0 +1,70 @@
+name: fetch-olx-pt
+
+on:
+  schedule:
+    # Every 4 hours. OLX has no API and the polite delay (3000ms × ~127 SKUs)
+    # already runs ~6 minutes per pass, so hourly would be needlessly noisy.
+    # Offset :43 to avoid colliding with fetch-ebay (:17).
+    - cron: '43 */4 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Skip persistence layer, just log queries'
+        type: boolean
+        default: false
+      limit:
+        description: 'Cap number of queries this run'
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fetch-olx-pt
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Sync catalog
+        env:
+          KIDSFASHION_SEED_URL: ${{ vars.KIDSFASHION_SEED_URL }}
+        run: npm run catalog-sync -w @kfi/normalizer
+
+      - name: Run OLX-PT scrape
+        env:
+          NODE_ENV: production
+          LOG_LEVEL: info
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
+        run: |
+          npm run scrape -w @kfi/scrapers -- \
+            --source olx-pt \
+            --delay-ms 3000 \
+            ${{ inputs.dry_run && '--dry' || '' }} \
+            ${{ inputs.limit && format('--limit {0}', inputs.limit) || '' }}
+
+      - name: Upload run artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scrape-output-olx-pt-${{ github.run_id }}
+          path: |
+            data/listings-raw-olx-pt-*.json
+            data/listings-normalized-olx-pt-*.json
+            data/scrape-run-olx-pt-*.json
+          retention-days: 7
+          if-no-files-found: ignore
