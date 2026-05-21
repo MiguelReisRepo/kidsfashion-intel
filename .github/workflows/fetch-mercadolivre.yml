@@ -1,0 +1,70 @@
+name: fetch-mercadolivre
+
+on:
+  schedule:
+    # Every 6 hours, offset :29 to avoid clashing with eBay (:17) and OLX (:43).
+    - cron: '29 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Skip persistence layer, just log queries'
+        type: boolean
+        default: false
+      limit:
+        description: 'Cap number of queries this run'
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fetch-mercadolivre
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Sync catalog
+        env:
+          KIDSFASHION_SEED_URL: ${{ vars.KIDSFASHION_SEED_URL }}
+        run: npm run catalog-sync -w @kfi/normalizer
+
+      - name: Run Mercado Livre scrape
+        env:
+          NODE_ENV: production
+          LOG_LEVEL: info
+          MERCADOLIVRE_APP_ID: ${{ secrets.MERCADOLIVRE_APP_ID }}
+          MERCADOLIVRE_CLIENT_SECRET: ${{ secrets.MERCADOLIVRE_CLIENT_SECRET }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
+        run: |
+          npm run scrape -w @kfi/scrapers -- \
+            --source mercadolivre \
+            --delay-ms 2000 \
+            ${{ inputs.dry_run && '--dry' || '' }} \
+            ${{ inputs.limit && format('--limit {0}', inputs.limit) || '' }}
+
+      - name: Upload run artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scrape-output-mercadolivre-${{ github.run_id }}
+          path: |
+            data/listings-raw-mercadolivre-*.json
+            data/listings-normalized-mercadolivre-*.json
+            data/scrape-run-mercadolivre-*.json
+          retention-days: 7
+          if-no-files-found: ignore

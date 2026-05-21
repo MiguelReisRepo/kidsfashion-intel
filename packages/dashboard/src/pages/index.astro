@@ -1,0 +1,52 @@
+---
+import Base from '../layouts/Base.astro';
+import { supabase } from '../lib/supabase.ts';
+
+const sb = supabase();
+const [{ data: top, error: topErr }, { data: runs, error: runsErr }] = await Promise.all([
+  sb.from('top_demand_30d').select('recommendation').limit(500),
+  sb.from('scrape_runs').select('source_id, status, started_at, listings_found, errors').order('started_at', { ascending: false }).limit(50),
+]);
+if (topErr) throw new Error(topErr.message);
+if (runsErr) throw new Error(runsErr.message);
+
+const counts: Record<string, number> = { STOCK: 0, RAISE: 0, HOLD: 0, SKIP: 0, LIQUIDATE: 0 };
+for (const r of top ?? []) {
+  const k = r.recommendation ?? 'HOLD';
+  counts[k] = (counts[k] ?? 0) + 1;
+}
+
+const okRuns = (runs ?? []).filter((r) => r.status === 'ok').length;
+const totalRuns = runs?.length ?? 0;
+const lastRun = (runs ?? [])[0];
+---
+<Base title="Overview">
+  <h1>Overview</h1>
+  <p class="muted">Snapshot da última corrida de <code>metrics_daily</code>.</p>
+
+  <div class="cards">
+    <div class="card"><div class="num">{counts.STOCK}</div><div class="lbl">Stock</div></div>
+    <div class="card"><div class="num">{counts.RAISE}</div><div class="lbl">Raise</div></div>
+    <div class="card"><div class="num">{counts.HOLD}</div><div class="lbl">Hold</div></div>
+    <div class="card"><div class="num">{counts.SKIP}</div><div class="lbl">Skip</div></div>
+    <div class="card"><div class="num">{counts.LIQUIDATE}</div><div class="lbl">Liquidate</div></div>
+  </div>
+
+  <h2>Source runs (últimas 50)</h2>
+  <p class="muted">{okRuns} de {totalRuns} ok · última corrida {lastRun?.started_at ?? '—'}</p>
+  <table>
+    <thead><tr><th>Source</th><th>Status</th><th>Iniciado</th><th>Listings</th><th>Erros</th></tr></thead>
+    <tbody>
+      {(runs ?? []).slice(0, 25).map((r: any) => (
+        <tr>
+          <td>{r.source_id}</td>
+          <td>{r.status}</td>
+          <td>{new Date(r.started_at).toLocaleString('pt-PT')}</td>
+          <td>{r.listings_found}</td>
+          <td>{Array.isArray(r.errors) ? r.errors.length : 0}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+
+</Base>

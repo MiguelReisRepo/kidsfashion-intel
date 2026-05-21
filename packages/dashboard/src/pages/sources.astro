@@ -1,0 +1,63 @@
+---
+import Base from '../layouts/Base.astro';
+import { supabase } from '../lib/supabase.ts';
+
+const sb = supabase();
+const [{ data: sources, error: sErr }, { data: runs, error: rErr }] = await Promise.all([
+  sb.from('sources').select('id, name, type, country, enabled, rate_per_hour, last_block_at, blocked_until, consecutive_errors').order('name'),
+  sb.from('scrape_runs').select('source_id, status, started_at, requests_made, listings_found, errors').order('started_at', { ascending: false }).limit(200),
+]);
+if (sErr) throw new Error(sErr.message);
+if (rErr) throw new Error(rErr.message);
+
+// Aggregate per source.
+const bySource = new Map<number, { runs: number; ok: number; partial: number; error: number; lastStarted: string | null; listings: number }>();
+for (const r of runs ?? []) {
+  const stat = bySource.get(r.source_id) ?? { runs: 0, ok: 0, partial: 0, error: 0, lastStarted: null, listings: 0 };
+  stat.runs++;
+  if (r.status === 'ok') stat.ok++;
+  else if (r.status === 'partial') stat.partial++;
+  else stat.error++;
+  stat.listings += r.listings_found ?? 0;
+  if (!stat.lastStarted || r.started_at > stat.lastStarted) stat.lastStarted = r.started_at;
+  bySource.set(r.source_id, stat);
+}
+---
+<Base title="Sources">
+  <h1>Sources</h1>
+  <p class="muted">Saúde das fontes nas últimas 200 corridas.</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Nome</th>
+        <th>Tipo</th>
+        <th>País</th>
+        <th>Enabled</th>
+        <th>Última corrida</th>
+        <th>Corridas (ok/partial/err)</th>
+        <th>Listings</th>
+        <th>Erros consec.</th>
+        <th>Blocked</th>
+      </tr>
+    </thead>
+    <tbody>
+      {(sources ?? []).map((s: any) => {
+        const stat = bySource.get(s.id) ?? { runs: 0, ok: 0, partial: 0, error: 0, lastStarted: null, listings: 0 };
+        return (
+          <tr>
+            <td><strong>{s.name}</strong></td>
+            <td>{s.type}</td>
+            <td>{s.country ?? '—'}</td>
+            <td>{s.enabled ? 'yes' : 'no'}</td>
+            <td>{stat.lastStarted ? new Date(stat.lastStarted).toLocaleString('pt-PT') : '—'}</td>
+            <td>{stat.ok}/{stat.partial}/{stat.error}</td>
+            <td>{stat.listings}</td>
+            <td>{s.consecutive_errors}</td>
+            <td>{s.blocked_until ? new Date(s.blocked_until).toLocaleString('pt-PT') : '—'}</td>
+          </tr>
+        );
+      })}
+    </tbody>
+  </table>
+</Base>

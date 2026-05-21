@@ -6,12 +6,25 @@ Companion service to the storefront; runs as a separate repo because the storefr
 
 ## Scope
 
-- **9 active sources:** eBay API, AliExpress API, Amazon PA-API, Mercado Livre API, OLX.pt, Depop, Grailed, Custojusto, Catawiki
-- **4 deferred sources** (Datadome-protected, require paid proxies): Vinted, Wallapop, Leboncoin, Subito
-- **Catalog monitored:** 232 SKUs / 127 unique `(team, season, kit_type)` combos
+- **Catalog monitored:** 232 SKUs (~80–120 dedup `(team, season, gender_age)` queries)
 - **Cost target:** 0 €/month recurring
 
-Full architecture in [`../kidsfashion-intel-masterplan.md`](../kidsfashion-intel-masterplan.md).
+### Sources
+
+| Source | Type | Status | Notes |
+|---|---|---|---|
+| eBay Browse API | API | implemented + cron | hourly at :17 |
+| OLX-PT | scrape (free fetch) | implemented + cron | every 4h at :43, kids → cat 292 |
+| Mercado Livre | API | implemented + cron | every 6h at :29, MLB site, OAuth required |
+| AliExpress | API | planned | open platform key not yet provisioned |
+| Amazon PA-API | API | planned | low volume of jerseys, deprioritized |
+| Catawiki | scrape | planned | minor volume, audited-listings only |
+| Custojusto | scrape | deferred | Cloudflare bot wall returns 403 — needs paid residential proxy |
+| Depop | scrape | deferred | requires browser automation |
+| Grailed | scrape | deferred | resale-niche, low signal-to-effort |
+| Vinted, Wallapop, Leboncoin, Subito | scrape | deferred | Datadome-protected (paid proxies required) |
+
+See [PRODUCTION.md](./PRODUCTION.md) for bring-up.
 
 ## Stack
 
@@ -28,15 +41,16 @@ Full architecture in [`../kidsfashion-intel-masterplan.md`](../kidsfashion-intel
 ```
 packages/
   shared/       types, env, logger, FX client
-  scrapers/     one module per source
-  ingest/       Supabase Edge Function — receives raw payloads
-  normalizer/   match listings against catalog_sku
-  metrics/      SQL + rollup jobs
-  alerts/       Discord webhook triggers
-  dashboard/    Astro app
-db/             schema, migrations, source seed
-.github/workflows/  one workflow per source + normalize/metrics/alerts crons
-docs/           ADRs and source specs
+  scrapers/     one module per source (ebay, olx-pt, mercadolivre)
+  normalizer/   catalog-sync from KidsFashionClub seed.ts + team-slug
+  db/           Supabase client + persistence helpers
+  metrics/      RPC-driven daily rollup (sold_signals + price_snapshots + metrics_daily)
+  alerts/       Discord webhook digest from top_demand_30d
+  shipping/     CTT/InPost rate calculator + standalone dashboard
+  dashboard/    Astro 5 static dashboard (build-time fetch from Supabase)
+db/             schema.sql, migrations, source seed
+.github/workflows/  fetch-* per source + normalize-metrics + digest-discord
+scripts/        ad-hoc spike scripts (see spike-search-portugal-kids.mjs)
 ```
 
 ## Development

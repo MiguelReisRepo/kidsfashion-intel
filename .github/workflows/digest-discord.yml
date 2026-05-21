@@ -1,0 +1,46 @@
+name: digest-discord
+
+on:
+  schedule:
+    # Daily at 09:30 UTC (after the 03:47 metrics rollup, before lunch).
+    - cron: '30 9 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Build payload and log it but do not post to Discord'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: digest-discord
+  cancel-in-progress: false
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Send digest
+        env:
+          NODE_ENV: production
+          LOG_LEVEL: info
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DISCORD_WEBHOOK_DIGEST: ${{ secrets.DISCORD_WEBHOOK_DIGEST }}
+          DISCORD_WEBHOOK_ALERTS: ${{ secrets.DISCORD_WEBHOOK_ALERTS }}
+        run: |
+          npm run digest -w @kfi/alerts -- \
+            ${{ inputs.dry_run && '--dry' || '' }}

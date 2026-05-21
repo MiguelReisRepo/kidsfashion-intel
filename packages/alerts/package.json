@@ -1,0 +1,16 @@
+{
+  "name": "@kfi/alerts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "digest": "tsc -b && node dist/cli.js"
+  },
+  "dependencies": {
+    "@kfi/shared": "*",
+    "@supabase/supabase-js": "^2.47.10"
+  }
+}

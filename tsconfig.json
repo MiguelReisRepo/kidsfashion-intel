@@ -6,6 +6,7 @@
     { "path": "./packages/db" },
     { "path": "./packages/scrapers" },
     { "path": "./packages/shipping" },
-    { "path": "./packages/metrics" }
+    { "path": "./packages/metrics" },
+    { "path": "./packages/alerts" }
   ]
 }

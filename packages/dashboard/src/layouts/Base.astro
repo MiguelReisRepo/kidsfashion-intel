@@ -1,0 +1,53 @@
+---
+interface Props {
+  title: string;
+}
+const { title } = Astro.props;
+---
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{title} · kidsfashion-intel</title>
+    <style is:global>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: #0a0a0a; color: #e4e4e7; font: 14px/1.5 system-ui, -apple-system, sans-serif; }
+      a { color: #fbbf24; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      nav { padding: 16px 24px; border-bottom: 1px solid #27272a; display: flex; gap: 24px; align-items: center; }
+      nav .brand { font-weight: 700; }
+      main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+      h1 { font-size: 22px; margin: 0 0 8px 0; }
+      h2 { font-size: 16px; margin: 0 0 12px 0; color: #a1a1aa; font-weight: 600; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #1f1f23; }
+      th { color: #71717a; font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+      td { font-size: 13px; }
+      tr:hover td { background: #18181b; }
+      .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+      .rec-STOCK { background: #047857; color: #d1fae5; }
+      .rec-RAISE { background: #b45309; color: #fef3c7; }
+      .rec-LIQUIDATE { background: #b91c1c; color: #fee2e2; }
+      .rec-HOLD { background: #3f3f46; color: #d4d4d8; }
+      .rec-SKIP { background: #27272a; color: #a1a1aa; }
+      .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px; }
+      .card { background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 16px; }
+      .card .num { font-size: 28px; font-weight: 700; }
+      .card .lbl { font-size: 11px; color: #71717a; text-transform: uppercase; letter-spacing: 0.05em; }
+      .muted { color: #71717a; }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <span class="brand">kidsfashion-intel</span>
+      <a href="/">Overview</a>
+      <a href="/top-demand">Top Demand</a>
+      <a href="/sources">Sources</a>
+    </nav>
+    <main>
+      <slot />
+    </main>
+  </body>
+</html>

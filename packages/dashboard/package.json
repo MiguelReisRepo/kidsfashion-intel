@@ -1,0 +1,17 @@
+{
+  "name": "@kfi/dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@kfi/shared": "*",
+    "@supabase/supabase-js": "^2.47.10",
+    "astro": "^5.1.0"
+  }
+}

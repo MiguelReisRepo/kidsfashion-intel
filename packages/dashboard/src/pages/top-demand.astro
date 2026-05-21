@@ -1,0 +1,45 @@
+---
+import Base from '../layouts/Base.astro';
+import { supabase, fmtEur } from '../lib/supabase.ts';
+
+const sb = supabase();
+const { data, error } = await sb.from('top_demand_30d').select('*').limit(200);
+if (error) throw new Error(error.message);
+const rows = data ?? [];
+---
+<Base title="Top Demand 30d">
+  <h1>Top Demand · últimos 30 dias</h1>
+  <p class="muted">SKUs com sinal de procura (vendas) ou oferta (listings ativos). {rows.length} resultados.</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Rec</th>
+        <th>SKU</th>
+        <th>Sold 7/30d</th>
+        <th>Active</th>
+        <th>Mediana</th>
+        <th>Retail</th>
+        <th>Demand</th>
+        <th>Stock</th>
+      </tr>
+    </thead>
+    <tbody>
+      {rows.map((r: any) => (
+        <tr>
+          <td><span class={`pill rec-${r.recommendation ?? 'HOLD'}`}>{r.recommendation ?? 'HOLD'}</span></td>
+          <td>
+            <strong>{r.team_display}</strong> {r.season}<br/>
+            <span class="muted">{r.kit_type} · {r.gender_age} · {r.slug}</span>
+          </td>
+          <td>{r.sold_7d ?? 0} / {r.sold_30d ?? 0}</td>
+          <td>{r.active_listings ?? 0}</td>
+          <td>{fmtEur(r.median_price_eur)}</td>
+          <td>{fmtEur(r.retail_price_eur)}</td>
+          <td>{r.demand_score ?? '—'}</td>
+          <td>{r.in_stock ? 'sim' : 'não'}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</Base>

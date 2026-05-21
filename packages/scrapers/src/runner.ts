@@ -12,6 +12,8 @@ import { searchEbay } from './ebay/client.js';
 import { normalizeEbayItem } from './ebay/normalize.js';
 import { searchOlx } from './olx-pt/client.js';
 import { normalizeOlxOffer } from './olx-pt/normalize.js';
+import { searchMercadoLivre } from './mercadolivre/client.js';
+import { normalizeMlItem } from './mercadolivre/normalize.js';
 import { buildCatalogQueries, type CatalogQuery } from './lib/queries.js';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -115,6 +117,22 @@ const adapters: Record<string, SourceAdapter> = {
       }));
       const listings = await Promise.all(
         offers.map((o) => normalizeOlxOffer(o, nowIso, query.expectedTeamSlug)),
+      );
+      return { raws, listings };
+    },
+  },
+  mercadolivre: {
+    // BR site (MLB) gives Portuguese results and is most relevant for our Brazil-team SKUs
+    // (Palmeiras, Flamengo, Corinthians, Brasil seleção). The kids category filter is not
+    // applied here — ML's category tree is broad and noisy; we rely on title-based audience
+    // detection in normalize.ts and post-filter at metrics rollup time.
+    buildQuery: (q) => ({ ...q, q: `${q.q} infantil` }),
+    async searchOne(query, nowIso) {
+      const res = await searchMercadoLivre({ q: query.q, siteId: 'MLB', limit: 50 });
+      const items = res.results;
+      const raws = items.map((it) => ({ external_id: it.id, payload: it }));
+      const listings = await Promise.all(
+        items.map((it) => normalizeMlItem(it, nowIso, query.expectedTeamSlug)),
       );
       return { raws, listings };
     },
