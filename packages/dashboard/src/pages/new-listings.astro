@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import { supabase, fmtEur, timeAgo } from '../lib/supabase.ts';
+import sampleListings from '../data/sample-listings.json';
 
 const sb = supabase();
 
@@ -12,6 +13,7 @@ const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 let rows: any[] = [];
 const sourceName = new Map<number, string>();
 const bySource: Record<string, number> = {};
+let usingSample = false;
 
 if (sb) {
   const [{ data: listings, error: lErr }, { data: sources, error: sErr }] = await Promise.all([
@@ -32,18 +34,33 @@ if (sb) {
     const n = sourceName.get(r.source_id) ?? 'unknown';
     bySource[n] = (bySource[n] ?? 0) + 1;
   }
+} else {
+  // No Supabase env: fall back to the bundled sample fixture so the operator
+  // sees real-world data on first run. Captured by scripts/seed-sample-listings.mjs
+  // — refresh that file to rotate the snapshot.
+  usingSample = true;
+  rows = sampleListings as any[];
+  for (const r of rows) {
+    const n = r.source_name ?? 'unknown';
+    bySource[n] = (bySource[n] ?? 0) + 1;
+  }
+}
+
+function sourceFor(r: any): string {
+  if (r.source_name) return r.source_name;
+  return sourceName.get(r.source_id) ?? '?';
 }
 ---
 <Base title="Novas listagens">
   <h1>Novas listagens · últimos 7 dias</h1>
-  {!sb && (
+  {usingSample && (
     <div style="background:#1f1f23;border:1px solid #44403c;border-radius:8px;padding:16px;margin-bottom:24px">
-      <strong>Supabase não configurado.</strong> Define <code>SUPABASE_URL</code> e <code>SUPABASE_SERVICE_ROLE_KEY</code> no <code>.env.local</code> para ver dados reais.
+      <strong>Amostra ao vivo:</strong> {rows.length} listagens reais puxadas do Vinted e OLX-PT para o teu catálogo de "Portugal" kids.
+      Configura <code>SUPABASE_URL</code> e <code>SUPABASE_SERVICE_ROLE_KEY</code> para passar a usar dados persistidos.
     </div>
   )}
   <p class="muted">
-    {rows.length} listagens vistas pela primeira vez desde {new Date(since).toLocaleDateString('pt-PT')}.
-    {Object.entries(bySource).map(([k, v]) => ` ${k}: ${v}`).join(' · ')}
+    {rows.length} listagens · {Object.entries(bySource).map(([k, v]) => `${k}: ${v}`).join(' · ')}
   </p>
 
   <table>
@@ -61,7 +78,7 @@ if (sb) {
     <tbody>
       {rows.map((r: any) => {
         const photo = Array.isArray(r.photos) && r.photos.length > 0 ? r.photos[0] : null;
-        const src = sourceName.get(r.source_id) ?? '?';
+        const src = sourceFor(r);
         const match = r.team_slug ? `${r.team_slug} ${r.season ?? ''} · ${r.kit_type ?? '?'}/${r.gender_age ?? '?'}` : 'unmatched';
         return (
           <tr>

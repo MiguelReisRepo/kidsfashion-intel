@@ -15,3 +15,7 @@ npm-debug.log*
 .cache
 .turbo
 data/
+# Exception: the dashboard ships with a small sample listings fixture so the
+# shell renders real data without Supabase.
+!packages/dashboard/src/data/
+!packages/dashboard/src/data/**
