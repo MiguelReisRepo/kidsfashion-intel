@@ -10,7 +10,9 @@ import {
 } from '@kfi/db';
 import { searchEbay } from './ebay/client.js';
 import { normalizeEbayItem } from './ebay/normalize.js';
-import { buildCatalogQueries } from './lib/queries.js';
+import { searchOlx } from './olx-pt/client.js';
+import { normalizeOlxOffer } from './olx-pt/normalize.js';
+import { buildCatalogQueries, type CatalogQuery } from './lib/queries.js';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const CATALOG_PATH = resolve(REPO_ROOT, 'data', 'catalog.json');
@@ -67,16 +69,61 @@ function sleep(ms: number): Promise<void> {
   return new Promise((res) => setTimeout(res, ms));
 }
 
-async function runEbay(opts: RunnerOptions): Promise<void> {
+interface SourceAdapter {
+  searchOne(query: CatalogQuery, nowIso: string): Promise<{
+    raws: { external_id: string; payload: unknown }[];
+    listings: Listing[];
+  }>;
+  buildQuery(q: CatalogQuery): CatalogQuery;
+}
+
+const adapters: Record<string, SourceAdapter> = {
+  ebay: {
+    buildQuery: (q) => ({ ...q, q: `${q.q} jersey kit camisola` }),
+    async searchOne(query, nowIso) {
+      const res = await searchEbay({ q: query.q, limit: 50 });
+      const items = res.itemSummaries ?? [];
+      const raws = items.map((item) => ({
+        external_id: item.itemId,
+        payload: item,
+      }));
+      const listings = await Promise.all(
+        items.map((item) => normalizeEbayItem(item, nowIso, query.expectedTeamSlug)),
+      );
+      return { raws, listings };
+    },
+  },
+  'olx-pt': {
+    buildQuery: (q) => q,
+    async searchOne(query, nowIso) {
+      const res = await searchOlx({ query: query.q, limit: 40 });
+      const offers = res.data;
+      const raws = offers.map((o) => ({
+        external_id: String(o.id),
+        payload: o,
+      }));
+      const listings = await Promise.all(
+        offers.map((o) => normalizeOlxOffer(o, nowIso, query.expectedTeamSlug)),
+      );
+      return { raws, listings };
+    },
+  },
+};
+
+async function runSource(opts: RunnerOptions): Promise<void> {
   loadEnv();
   const mode = currentMode();
-  logger.info({ mode, dryRun: opts.dryRun }, 'eBay runner starting');
+  const adapter = adapters[opts.source];
+  if (!adapter) throw new Error(`Source not implemented: ${opts.source}`);
+
+  logger.info({ mode, source: opts.source, dryRun: opts.dryRun }, 'runner starting');
 
   const catalog = await loadCatalog();
-  const queries = buildCatalogQueries(catalog as Parameters<typeof buildCatalogQueries>[0]);
+  const baseQueries = buildCatalogQueries(catalog as Parameters<typeof buildCatalogQueries>[0]);
+  const queries = baseQueries.map((q) => adapter.buildQuery(q));
   const queriesToRun = opts.limit ? queries.slice(0, opts.limit) : queries;
   logger.info(
-    { totalQueries: queries.length, running: queriesToRun.length },
+    { totalQueries: queries.length, running: queriesToRun.length, source: opts.source },
     'Built catalog queries',
   );
 
@@ -92,78 +139,62 @@ async function runEbay(opts: RunnerOptions): Promise<void> {
       continue;
     }
     try {
-      const res = await searchEbay({ q: query.q, limit: 50 });
+      const nowIso = new Date().toISOString();
+      const { raws, listings } = await adapter.searchOne(query, nowIso);
       requests++;
-      const items = res.itemSummaries ?? [];
-      logger.info(
-        { q: query.q, found: items.length, total: res.total ?? null },
-        'eBay search ok',
-      );
-
-      const now = new Date().toISOString();
-      for (const item of items) {
-        rawAccumulator.push({
-          source: 'ebay',
-          external_id: item.itemId,
-          payload: item,
-        });
-        try {
-          const listing = await normalizeEbayItem(item, now, query.expectedTeamSlug);
-          normalizedAccumulator.push(listing);
-        } catch (err) {
-          errors.push({
-            query: query.q,
-            error: `normalize ${item.itemId}: ${err instanceof Error ? err.message : String(err)}`,
-          });
-        }
+      logger.info({ q: query.q, found: raws.length }, 'search ok');
+      for (const r of raws) {
+        rawAccumulator.push({ source: opts.source, external_id: r.external_id, payload: r.payload });
       }
-
-      await sleep(opts.delayMs);
+      normalizedAccumulator.push(...listings);
     } catch (err) {
       errors.push({
         query: query.q,
         error: err instanceof Error ? err.message : String(err),
       });
-      logger.warn({ q: query.q, err }, 'eBay search failed');
+      logger.warn({ q: query.q, err: err instanceof Error ? err.message : err }, 'search failed');
     }
+    // Always sleep between iterations — both for politeness and to avoid bursting
+    // a freshly-rate-limited source.
+    await sleep(opts.delayMs);
   }
 
   if (!opts.dryRun) {
-    await persistRawListings('ebay', rawAccumulator);
-    await persistNormalizedListings('ebay', normalizedAccumulator);
+    await persistRawListings(opts.source, rawAccumulator);
+    await persistNormalizedListings(opts.source, normalizedAccumulator);
   }
 
   await recordScrapeRun({
-    source: 'ebay',
+    source: opts.source,
     started_at: startedAt,
     ended_at: new Date().toISOString(),
     requests_made: requests,
     listings_found: rawAccumulator.length,
     listings_new: rawAccumulator.length,
     errors,
-    status: errors.length === 0 ? 'ok' : errors.length < requests / 2 ? 'partial' : 'error',
+    status:
+      errors.length === 0
+        ? 'ok'
+        : errors.length < Math.max(1, requests / 2)
+          ? 'partial'
+          : 'error',
   });
 
   logger.info(
     {
+      source: opts.source,
       requests,
       listings: rawAccumulator.length,
       errors: errors.length,
       mode,
     },
-    'eBay runner finished',
+    'runner finished',
   );
 }
 
 async function main(): Promise<void> {
   const opts = parseArgs(process.argv.slice(2));
-  switch (opts.source) {
-    case 'ebay':
-      await runEbay(opts);
-      break;
-    default:
-      throw new Error(`Source not implemented yet: ${opts.source}`);
-  }
+  await runSource(opts);
 }
 
 main().catch((err: unknown) => {

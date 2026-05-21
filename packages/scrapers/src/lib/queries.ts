@@ -35,9 +35,9 @@ export function buildCatalogQueries(catalog: CatalogSku[]): CatalogQuery[] {
 
   const queries: CatalogQuery[] = [];
   for (const entry of byTeamSeason.values()) {
-    // Build a query string that targets jerseys/kits for this team+season.
-    // The eBay Browse API tokenizes loosely, so multi-language terms widen recall.
-    const q = `${entry.team_display} ${entry.season} jersey kit camisola`;
+    // Base query is team + season. Each source adapter adds its own keyword
+    // suffix (eBay benefits from multi-lang widening, OLX search prefers terse PT input).
+    const q = `${entry.team_display} ${entry.season}`;
     queries.push({
       q,
       expectedTeamSlug: entry.team_slug,
