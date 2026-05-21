@@ -63,6 +63,7 @@ function renderKitTable(kit: Kit, destinations: Country[], rates: ShippingRate[]
   const cols: Array<{ carrier: Carrier; service: ShippingRate['service']; label: string }> = [
     { carrier: 'CTT', service: 'economy', label: 'CTT Normal' },
     { carrier: 'CTT', service: 'registered', label: 'CTT Registado' },
+    { carrier: 'CTT', service: 'registered_bulk', label: 'CTT Registado Pré-Pagos' },
     { carrier: 'CTT', service: 'standard', label: 'CTT Azul' },
     { carrier: 'InPost', service: 'economy', label: 'InPost PickPoint' },
     { carrier: 'DPD', service: 'standard', label: 'DPD Classic' },
