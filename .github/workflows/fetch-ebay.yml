@@ -1,9 +1,10 @@
 name: fetch-ebay
 
 on:
-  schedule:
-    # Hourly with jitter (offset 17 minutes past the hour to avoid clustering)
-    - cron: '17 * * * *'
+  # Schedule desativado até EBAY_CLIENT_ID/SECRET serem configurados em
+  # Settings -> Secrets and variables -> Actions. Reativa descomentando.
+  # schedule:
+  #   - cron: '17 * * * *'   # hourly, minute 17
   workflow_dispatch:
     inputs:
       dry_run:
